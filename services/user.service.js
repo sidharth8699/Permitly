@@ -51,9 +51,12 @@ class UserService {
         // Create a clean update object
         const updateFields = {};
 
-        // Handle password change
-        if (updateData.new_password) {
-            // Verify current password
+        // Handle password and email verification first
+        if (updateData.new_password || (updateData.email && updateData.email !== user.email)) {
+            if (!updateData.current_password) {
+                throw new AppError('Current password is required to update password or email', 400);
+            }
+
             const isValidPassword = await bcrypt.compare(
                 updateData.current_password,
                 user.password_hash
@@ -62,14 +65,6 @@ class UserService {
             if (!isValidPassword) {
                 throw new AppError('Current password is incorrect', 401);
             }
-
-            // Hash new password
-            const salt = await bcrypt.genSalt(10);
-            updateData.password_hash = await bcrypt.hash(updateData.new_password, salt);
-            
-            // Remove password fields from update data
-            delete updateData.current_password;
-            delete updateData.new_password;
         }
 
         // If trying to update email, verify current password
@@ -102,26 +97,23 @@ class UserService {
 
         // Add allowed fields to update object
         if (updateData.name) updateFields.name = updateData.name;
-        if (updateData.email) updateFields.email = updateData.email;
         if (updateData.phone_number) updateFields.phone_number = updateData.phone_number;
         
+        // Handle email update
+        if (updateData.email && updateData.email !== user.email) {
+            // Check if new email is already in use
+            const emailExists = await prisma.User.findUnique({
+                where: { email: updateData.email }
+            });
+
+            if (emailExists) {
+                throw new AppError('Email already in use', 400);
+            }
+            updateFields.email = updateData.email;
+        }
+
         // Handle password update
         if (updateData.new_password) {
-            // Verify current password
-            if (!updateData.current_password) {
-                throw new AppError('Current password is required to update password', 400);
-            }
-
-            const isValidPassword = await bcrypt.compare(
-                updateData.current_password,
-                user.password_hash
-            );
-
-            if (!isValidPassword) {
-                throw new AppError('Current password is incorrect', 401);
-            }
-
-            // Hash new password
             const salt = await bcrypt.genSalt(10);
             updateFields.password_hash = await bcrypt.hash(updateData.new_password, salt);
         }
