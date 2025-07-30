@@ -3,6 +3,26 @@
  * @param {string} password - The password to validate
  * @returns {boolean} - True if password meets requirements
  */
+/**
+ * Validates role type
+ * @param {string} role - The role to validate
+ * @returns {boolean} - True if role is valid
+ */
+export const validateRole = (role) => {
+    const validRoles = ['admin', 'host', 'guard'];
+    return validRoles.includes(role);
+};
+
+/**
+ * Validates phone number format
+ * @param {string} phoneNumber - The phone number to validate
+ * @returns {boolean} - True if phone number is valid
+ */
+export const validatePhoneNumber = (phoneNumber) => {
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    return phoneRegex.test(phoneNumber);
+};
+
 export const validatePassword = (password) => {
     // Password must be at least 8 characters long
     if (password.length < 8) {

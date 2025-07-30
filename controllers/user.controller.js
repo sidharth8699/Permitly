@@ -1,5 +1,5 @@
 import userService from '../services/user.service.js';
-import { validateEmail, validatePassword } from '../utils/validators.js';
+import { validateEmail, validatePassword, validateRole, validatePhoneNumber } from '../utils/validators.js';
 
 export const userController = {
     /**
@@ -31,6 +31,16 @@ export const userController = {
             const userId = req.user.user_id;
             const updateData = req.body;
 
+            // Validate phone number if provided
+            if (updateData.phone_number) {
+                if (!validatePhoneNumber(updateData.phone_number)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid phone number format'
+                    });
+                }
+            }
+
             // Validate new email if provided
             if (updateData.email) {
                 if (!validateEmail(updateData.email)) {
@@ -47,6 +57,24 @@ export const userController = {
                     return res.status(400).json({
                         success: false,
                         message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+                    });
+                }
+            }
+
+            // Validate role update if provided
+            if (updateData.role) {
+                // Only admins can update roles
+                if (req.user.role !== 'admin') {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Only administrators can update user roles'
+                    });
+                }
+
+                if (!validateRole(updateData.role)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid role. Role must be either admin, host, or guard'
                     });
                 }
             }

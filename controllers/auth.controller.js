@@ -1,5 +1,5 @@
 import authService from '../services/auth.service.js';
-import { validateEmail, validatePassword } from '../utils/validators.js';
+import { validateEmail, validatePassword, validateRole, validatePhoneNumber } from '../utils/validators.js';
 
 export const authController = {
     async signUp(req, res) {
@@ -30,9 +30,8 @@ export const authController = {
                 });
             }
 
-            // Validate phone number format (basic validation)
-            const phoneRegex = /^\+?[\d\s-]{10,}$/;  // Basic regex for phone numbers
-            if (!phoneRegex.test(userData.phone_number)) {
+            // Validate phone number format
+            if (!validatePhoneNumber(userData.phone_number)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Invalid phone number format'
@@ -40,10 +39,10 @@ export const authController = {
             }
 
             // Validate role
-            if (!['admin', 'host', 'guard'].includes(userData.role)) { // in 3 ke alawa nhi rkh skte
+            if (!validateRole(userData.role)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid role'
+                    message: 'Invalid role. Role must be either admin, host, or guard'
                 });
             }
 
