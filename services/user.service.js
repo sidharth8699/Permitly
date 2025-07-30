@@ -98,6 +98,7 @@ class UserService {
         // Add allowed fields to update object
         if (updateData.name) updateFields.name = updateData.name;
         if (updateData.phone_number) updateFields.phone_number = updateData.phone_number;
+        if (updateData.role) updateFields.role = updateData.role;
         
         // Handle email update
         if (updateData.email && updateData.email !== user.email) {

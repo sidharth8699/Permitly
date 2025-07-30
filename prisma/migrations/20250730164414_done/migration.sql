@@ -3,6 +3,7 @@ CREATE TABLE "User" (
     "user_id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "phone_number" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

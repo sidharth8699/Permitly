@@ -1,7 +1,9 @@
 import express from 'express';
 import { protect, restrictTo } from '../middleware/auth.middleware.js';
+import { VisitorController } from '../controllers/visitor.controller.js';
 
 const router = express.Router();
+const visitorController = new VisitorController();
 
 // Protect all visitor routes except creation
 router.use(protect);
@@ -9,17 +11,9 @@ router.use(protect);
 router.use('/:id', restrictTo('admin', 'host'));
 
 // Visitor Routes
-router.post('/', (req, res) => {
-    // TODO: Create new visitor request
-    // Required fields: name, phone_number, email, purpose_of_visit, host_id
-    // Auto-set: status='pending', created_at, updated_at
-});
+router.post('/', visitorController.createVisitor);
 
-router.get('/', (req, res) => {
-    // TODO: Get all visitors (filtered by host_id if not admin)
-    // Query params: status, date_range, host_id
-    // Returns: visitor details with host information
-});
+router.get('/', visitorController.getAllVisitors);
 
 router.get('/:visitorId', (req, res) => {
     // TODO: Get visitor details
