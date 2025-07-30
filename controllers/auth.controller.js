@@ -6,10 +6,19 @@ export const authController = {
             const userData = req.body;
 
             // Validate required fields
-            if (!userData.name || !userData.email || !userData.password || !userData.role) {
+            if (!userData.name || !userData.email || !userData.password || !userData.role || !userData.phone_number) {
                 return res.status(400).json({
                     success: false,
                     message: 'Missing required fields'
+                });
+            }
+
+            // Validate phone number format (basic validation)
+            const phoneRegex = /^\+?[\d\s-]{10,}$/;  // Basic regex for phone numbers
+            if (!phoneRegex.test(userData.phone_number)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid phone number format'
                 });
             }
 

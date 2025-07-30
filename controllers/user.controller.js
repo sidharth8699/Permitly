@@ -1,0 +1,77 @@
+import userService from '../services/user.service.js';
+
+export const userController = {
+    /**
+     * Get user profile with related counts
+     */
+    async getProfile(req, res) {
+        try {
+            const userId = req.user.user_id;
+            const userProfile = await userService.getUserProfile(userId);
+
+            res.status(200).json({
+                success: true,
+                data: userProfile
+            });
+        } catch (error) {
+            console.error('Error getting user profile:', error);
+            res.status(error.statusCode || 500).json({
+                success: false,
+                message: error.message || 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Update user profile
+     */
+    async updateProfile(req, res) {
+        try {
+            const userId = req.user.user_id;
+            const updateData = req.body;
+
+            const updatedProfile = await userService.updateUserProfile(userId, updateData);
+
+            res.status(200).json({
+                success: true,
+                data: updatedProfile
+            });
+        } catch (error) {
+            console.error('Error updating user profile:', error);
+            res.status(error.statusCode || 500).json({
+                success: false,
+                message: error.message || 'Internal server error'
+            });
+        }
+    },
+
+    /**
+     * Get recent visitors
+     */
+    async getRecentVisitors(req, res) {
+        try {
+            const userId = req.user.user_id;
+            
+            // Only hosts can see their visitors
+            if (req.user.role !== 'host') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Only hosts can view their visitors'
+                });
+            }
+
+            const recentVisitors = await userService.getRecentVisitors(userId);
+
+            res.status(200).json({
+                success: true,
+                data: recentVisitors
+            });
+        } catch (error) {
+            console.error('Error getting recent visitors:', error);
+            res.status(error.statusCode || 500).json({
+                success: false,
+                message: error.message || 'Internal server error'
+            });
+        }
+    }
+};

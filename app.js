@@ -1,11 +1,14 @@
 import express from 'express';
 import { PORT } from './config/env.js';
-import userRoutes from './routes/users.js';
-import visitorRoutes from './routes/visitors.js';
-import passRoutes from './routes/passes.js';
-import notificationRoutes from './routes/notifications.js';
-import { globalErrorHandler, unhandledRejection, uncaughtException } from './middleware/errorHandler.js';
-import AppError from './middleware/AppError.js';
+import userRoutes from './routes/users.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import visitorRoutes from './routes/visitors.routes.js';
+import passRoutes from './routes/passes.routes.js';
+import guardRoutes from './routes/guard.routes.js';
+import notificationRoutes from './routes/notifications.routes.js';
+import { globalErrorHandler, unhandledRejection, uncaughtException } from './middleware/error-handler.middleware.js';
+import AppError from './middleware/error.middleware.js';
 
 // Handle uncaught exceptions
 process.on('uncaughtException', uncaughtException);
@@ -27,7 +30,10 @@ app.get('/', (_req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/guard', guardRoutes);
 app.use('/api/visitors', visitorRoutes);
 app.use('/api/passes', passRoutes);
 app.use('/api/notifications', notificationRoutes);

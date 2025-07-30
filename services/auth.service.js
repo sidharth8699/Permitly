@@ -65,7 +65,8 @@ class AuthService { // we create an object from this later as you see in last ex
             id: user.user_id,
             name: user.name,
             email: user.email,
-            role: user.role
+            role: user.role,
+            phone_number: user.phone_number
         };
     }
 
@@ -85,7 +86,8 @@ class AuthService { // we create an object from this later as you see in last ex
                 name: userData.name,
                 email: userData.email,
                 password_hash: hashedPassword,
-                role: userData.role
+                role: userData.role,
+                phone_number: userData.phone_number
             }
         });
 

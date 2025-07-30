@@ -1,5 +1,12 @@
 import express from 'express';
+import { protect, restrictTo } from '../middleware/auth.middleware.js';
+
 const router = express.Router();
+
+// Protect all visitor routes except creation
+router.use(protect);
+// Only hosts and admins can manage visitors
+router.use('/:id', restrictTo('admin', 'host'));
 
 // Visitor Routes
 router.post('/', (req, res) => {
