@@ -19,7 +19,16 @@ export const validateRole = (role) => {
  * @returns {boolean} - True if phone number is valid
  */
 export const validatePhoneNumber = (phoneNumber) => {
-    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    // Remove all spaces, hyphens, and plus sign to count actual digits
+    const digitsOnly = phoneNumber.replace(/[\s\-+]/g, '');
+    
+    // Check if we have exactly 10 digits
+    if (digitsOnly.length !== 10) {
+        return false;
+    }
+
+    // Validate format: optional +, followed by digits, spaces, and hyphens
+    const phoneRegex = /^\+?[\d\s-]+$/;
     return phoneRegex.test(phoneNumber);
 };
 
@@ -58,38 +67,7 @@ export const validatePassword = (password) => {
  * @returns {boolean} - True if email is valid
  */
 export const validateEmail = (email) => {
-    // Basic email format validation
-    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    
-    if (!emailRegex.test(email)) {
-        return false;
-    }
-
-    // Additional validations
-    const [localPart, domain] = email.split('@');
-
-    // Check local part length (before @)
-    if (localPart.length > 64) {
-        return false;
-    }
-
-    // Check domain length (after @)
-    if (domain.length > 255) {
-        return false;
-    }
-
-    // Check for consecutive dots
-    if (email.includes('..')) {
-        return false;
-    }
-
-    // Check for common invalid patterns
-    const invalidPatterns = [
-        /[<>()[\]\\,;:\s@"]/,  // No special characters
-        /^[.-]/,               // Can't start with dot or hyphen
-        /[.-]$/,              // Can't end with dot or hyphen
-        /^[0-9]/,             // Shouldn't start with number (recommended)
-    ];
-
-    return !invalidPatterns.some(pattern => pattern.test(email));
+    // Simple email validation for format like: test@example.com
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 };

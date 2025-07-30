@@ -1,5 +1,5 @@
 import userService from '../services/user.service.js';
-import { validateEmail, validatePassword, validateRole, validatePhoneNumber } from '../utils/validators.js';
+import { validateEmail, validatePassword, validatePhoneNumber } from '../utils/validators.js';
 
 export const userController = {
     /**
@@ -60,25 +60,7 @@ export const userController = {
                     });
                 }
             }
-
-            // Validate role update if provided
-            if (updateData.role) {
-                // Only admins can update roles
-                if (req.user.role !== 'admin') {
-                    return res.status(403).json({
-                        success: false,
-                        message: 'Only administrators can update user roles'
-                    });
-                }
-
-                if (!validateRole(updateData.role)) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Invalid role. Role must be either admin, host, or guard'
-                    });
-                }
-            }
-
+            
             const updatedProfile = await userService.updateUserProfile(userId, updateData);
 
             res.status(200).json({
