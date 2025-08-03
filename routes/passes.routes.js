@@ -1,49 +1,26 @@
 import express from 'express';
+import { PassController } from '../controllers/pass.controller.js';
+import { validatePassRequest } from '../middleware/pass.middleware.js';
+
 const router = express.Router();
+const passController = new PassController();
 
 // Pass Routes
-router.post('/', (req, res) => {
-    // TODO: Generate new pass for visitor
-    // Required fields: visitor_id, expiry_time
-    // Auto-set: status='pending', qr_code_data, created_at
-});
+// Create pass for a specific visitor
+// router.post('/visitor/:visitorId',     // created imeadiately after the visitor ID in the URL....URL -> QR Code Image -> Scan -> URL -> Backend Endpoint
+//     validatePassRequest, 
+//     passController.createPass);
 
-router.get('/', (req, res) => {
-    // TODO: Get all passes
-    // Query params: visitor_id, status, date_range
-    // Returns: pass details with visitor and approver information
-});
 
-router.get('/:passId', (req, res) => {
-    // TODO: Get pass details
-    // Returns: all pass fields + visitor details + approver details
-});
+// for admin and can also by visitor id
+router.get('/', passController.getAllPasses); // Get all passes with filters has to toggle for admin to see all passes or only their own
 
-router.put('/:passId/status', (req, res) => {
-    // TODO: Update pass status
-    // Required: status (enum: 'pending', 'approved', 'expired')
-    // If approved: set approved_at and approved_by
-    // Side effect: create notification for visitor
-});
+// Get details of a specific pass (admin can view any, host can only view their visitors' passes)
+router.get('/:passId', passController.getPassById);        // for admin only.
 
-router.put('/:passId/entry', (req, res) => {
-    // TODO: Record entry time
-    // Validates: pass is approved and not expired
-    // Updates: entry_time
-    // Side effect: notify host
-});
+// Get pass by visitor ID in get all passes
+// router.get('/:visitorId', passController.getPassByVisitorId); // This route can be used to get passes by visitor ID if needed
 
-router.put('/:passId/exit', (req, res) => {
-    // TODO: Record exit time
-    // Validates: pass has entry_time
-    // Updates: exit_time
-    // Side effect: notify host if needed
-});
 
-router.get('/qr/:qrCode', (req, res) => {
-    // TODO: Validate QR code and get pass details
-    // Returns: pass status, validity, and visitor details
-    // Used by guards for quick verification
-});
 
 export default router;

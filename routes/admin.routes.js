@@ -1,7 +1,9 @@
 import express from 'express';
 import { protect, restrictTo } from '../middleware/auth.middleware.js';
+import { AdminController } from '../controllers/admin.controller.js';
 
 const router = express.Router();
+const adminController = new AdminController();
 
 // Protect all admin routes
 router.use(protect);
@@ -10,29 +12,16 @@ router.use(restrictTo('admin'));
 /**
  * Admin User Management Routes
  */
-router.get('/users', (req, res) => {
-    // TODO: Get all users (Admin only)
-    // Query params: role (enum: 'admin', 'host', 'guard'), page, limit, sort
-    // Returns: users with related entity counts
-});
+// Get all users with filtering and pagination
+router.get('/users', adminController.getAllUsers);//only admin
 
-router.get('/users/:userId', (req, res) => {
-    // TODO: Get user by ID (Admin only)
-    // Returns: user details + related entities summary
-    // Includes: visitors, passes, notifications
-});
+// Get user details with related entities
+router.get('/users/:userId', adminController.getUserById);      // all things of user come in one search.
 
-router.put('/users/:userId', (req, res) => {
-    // TODO: Update user (Admin only)
-    // Optional fields: name, email, role, status
-    // Auto-update: updated_at
-    // Validates: role permissions, email uniqueness
-});
+// Update user details
+router.put('/users/:userId', adminController.updateUser);
 
-router.delete('/users/:userId', (req, res) => {
-    // TODO: Delete user (Admin only)
-    // Validates: no pending visitors/passes
-    // Side effect: reassign or archive related entities
-});
+// Delete user and cleanup related entities
+router.delete('/users/:userId', adminController.deleteUser);
 
 export default router;

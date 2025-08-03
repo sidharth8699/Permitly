@@ -13,29 +13,26 @@ router.use('/:id', restrictTo('admin', 'host'));
 // Visitor Routes
 router.post('/', visitorController.createVisitor);
 
-router.get('/', visitorController.getAllVisitors);
+//only visitor information
+//in user showall false
+// admin has to button one to show all visitors and one for his own showall false.
+router.get('/', visitorController.getAllVisitors); // toggle for admin to view all visitors  and his own & for host to view their own visitors.
 
-router.get('/:visitorId', (req, res) => {
-    // TODO: Get visitor details
-    // Returns: all visitor fields + host details + associated passes
-});
+// how the url look like : /visitors/1      
+// Get visitor details by ID
+router.get('/:visitorId', visitorController.getVisitorById); // // Only admin or the host of this visitor can view details
 
-router.put('/:visitorId/status', (req, res) => {
-    // TODO: Update visitor status
-    // Required: status (enum: 'pending', 'approved', 'rejected', 'expired')
-    // Auto-update: updated_at
-    // Side effect: create notification for visitor
-});
 
-router.get('/host/:hostId', (req, res) => {
-    // TODO: Get all visitors for a specific host
-    // Query params: status, date_range
-    // Returns: filtered visitors with pass information
-});
+// Simple approve/reject/expire routes without verification
+router.put('/:visitorId/approve', visitorController.approveVisitor);
+router.put('/:visitorId/reject', visitorController.rejectVisitor);
+router.put('/:visitorId/expire', visitorController.expireVisitor);
 
-router.delete('/:visitorId', (req, res) => {
-    // TODO: Delete visitor request
-    // Side effect: cancel associated passes, notify relevant parties
-});
+// Get visitors by host ID // no permission check needed
+router.get('/host/:host_id', visitorController.getVisitorsByHostId); // Simple route to get visitors for a specific host
+
+
+// deletes visitor and pass
+router.delete('/:visitorId', visitorController.deleteVisitor); // both admin and host can delete a visitor and notify to host and visitor also use transaction handling for data consistency.
 
 export default router;

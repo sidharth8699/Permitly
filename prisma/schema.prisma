@@ -13,12 +13,19 @@ model User {
   email      String    @unique
   phone_number String
   password_hash String
-  role       String    // 'admin', 'host', 'guard'
+  role       UserRole  @default(HOST)
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
+
+enum UserRole {
+  admin
+  host
+  guard
+}
   
   // Add reverse relations
   visitors   Visitor[] @relation("HostVisitors") // Host -> Visitors
+  created_visitors Visitor[] @relation("GuardCreatedVisitors") // Guard -> Created Visitors
   passes     Pass[]     @relation("UserPasses")  // User -> Pass (for approvals)
   notifications Notification[] @relation("UserNotifications") // User -> Notifications
 }
@@ -30,26 +37,34 @@ model Visitor {
   email         String
   purpose_of_visit String
   host_id       Int
-  status        String   // 'pending', 'approved', 'rejected', 'expired'
+  created_by_guard_id Int?    // Can be null if not created by guard
+  status        VisitorStatus @default(PENDING)
+  entry_time    DateTime?
+  exit_time     DateTime?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
+
+enum VisitorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
   
   host          User     @relation("HostVisitors", fields: [host_id], references: [user_id])
+  created_by_guard User? @relation("GuardCreatedVisitors", fields: [created_by_guard_id], references: [user_id])
   passes        Pass[]   @relation("VisitorPasses") // Visitor -> Passes
-  
+  notifications Notification[] @relation("VisitorNotifications") // Visitor -> Notifications
 }
 
 model Pass {
   pass_id       Int      @id @default(autoincrement())
   visitor_id    Int
-  status        String   // 'pending', 'approved', 'expired'
   qr_code_data  String
   created_at    DateTime @default(now())
   expiry_time   DateTime
   approved_at   DateTime?
   approved_by   Int?
-  entry_time    DateTime?
-  exit_time     DateTime?
   
   visitor       Visitor  @relation("VisitorPasses", fields: [visitor_id], references: [visitor_id])
   approved_by_user User? @relation("UserPasses", fields: [approved_by], references: [user_id])
@@ -58,11 +73,11 @@ model Pass {
 model Notification {
   notification_id Int      @id @default(autoincrement())
   recipient_id    Int
-  type            String   // 'email', 'sms'
+  visitor_id      Int?     // Optional visitor reference
   content         String
-  status          String   // 'sent', 'failed'
   created_at      DateTime @default(now())
   
   recipient       User     @relation("UserNotifications", fields: [recipient_id], references: [user_id])
+  visitor         Visitor? @relation("VisitorNotifications", fields: [visitor_id], references: [visitor_id])
 }
 
