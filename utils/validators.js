@@ -32,6 +32,11 @@ export const validatePhoneNumber = (phoneNumber) => {
     return phoneRegex.test(phoneNumber);
 };
 
+export const validateVisitorStatus = (status) => {
+    const validStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'];
+    return validStatuses.includes(status);
+};
+
 export const validatePassword = (password) => {
     // Password must be at least 8 characters long
     if (password.length < 8) {
