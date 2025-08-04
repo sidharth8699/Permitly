@@ -24,16 +24,17 @@ export class VisitorService {
             };
         }
 
-        // If admin wants to see their own visitors OR if it's a regular host
-        if ((!show_all && userRole === 'admin') || userRole === 'host') {
-            where.host_id = parseInt(userId);
-        }
-        // If admin with show_all=true and specific host_id provided, filter by that host
-        else if (show_all && userRole === 'admin' && host_id) {
-            where.host_id = parseInt(host_id);
-        }
-
-        // Get only visitor details
+            // If admin wants to see their own visitors OR if it's a regular host
+            if ((!show_all && userRole === 'ADMIN') || userRole === 'HOST') {
+                where.host_id = parseInt(userId);
+            }
+            // If admin with show_all=true and specific host_id provided, filter by that host
+            else if (show_all && userRole === 'ADMIN' && host_id) {
+                if (isNaN(parseInt(host_id))) {
+                    throw new Error('Invalid host_id provided');
+                }
+                where.host_id = parseInt(host_id);
+            }        // Get only visitor details
         const visitors = await prisma.visitor.findMany({
             where,
             select: {
@@ -58,6 +59,12 @@ export class VisitorService {
     }
 
     async updateVisitorStatus(visitorId, status) {
+        // Validate status
+        const validStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED'];
+        if (!validStatuses.includes(status)) {
+            throw new Error('Invalid status. Must be one of: ' + validStatuses.join(', '));
+        }
+
         // Get visitor with current details
         const visitor = await prisma.visitor.findUnique({
             where: { visitor_id: parseInt(visitorId) },
@@ -131,9 +138,9 @@ export class VisitorService {
         }
 
         // Check permissions (admin, host, or the guard who created the visitor can delete)
-        if (userRole !== 'admin' && 
+        if (userRole !== 'ADMIN' && 
             visitor.host_id !== userId && 
-            !(userRole === 'guard' && visitor.created_by_guard_id === userId)) {
+            !(userRole === 'GUARD' && visitor.created_by_guard_id === userId)) {
             throw new Error('You do not have permission to delete this visitor');
         }
 
@@ -156,8 +163,12 @@ export class VisitorService {
             // Create notifications for both visitor and host
             await prisma.notification.create({
                 data: {
-                    recipient_id: visitor.host_id,
-                    visitor_id: visitor.visitor_id,
+                    recipient: {
+                        connect: { user_id: visitor.host_id }
+                    },
+                    visitor: {
+                        connect: { visitor_id: visitor.visitor_id }
+                    },
                     content: `Visitor request for ${visitor.name} has been cancelled.`
                 }
             });
@@ -244,9 +255,9 @@ export class VisitorService {
 
         // Check if user has permission to view this visitor
         // Admin, host, or the guard who created the visitor can view details
-        if (userRole !== 'admin' && 
+        if (userRole !== 'ADMIN' && 
             visitor.host_id !== userId && 
-            !(userRole === 'guard' && visitor.created_by_guard_id === userId)) {
+            !(userRole === 'GUARD' && visitor.created_by_guard_id === userId)) {
             throw new Error('You do not have permission to view this visitor');
         }
 
@@ -316,7 +327,7 @@ export class VisitorService {
             throw new Error('Host not found');
         }
         // Check that only hosts, guards and admins can create visitor entries
-        if (host.role !== 'host' && host.role !== 'admin' && host.role !== 'guard') {
+        if (host.role !== 'HOST' && host.role !== 'ADMIN' && host.role !== 'GUARD') {
             throw new Error('Only hosts, guards and admins can create visitor entries');
         }
 
@@ -344,8 +355,12 @@ export class VisitorService {
         // Create notification for host
         await prisma.notification.create({
             data: {
-                recipient_id: host.user_id,
-                visitor_id: visitor.visitor_id,
+                recipient: {
+                    connect: { user_id: host.user_id }
+                },
+                visitor: {
+                    connect: { visitor_id: visitor.visitor_id }
+                },
                 content: `New visitor request from ${name} for purpose: ${purpose_of_visit}`
             }
         });

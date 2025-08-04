@@ -81,70 +81,6 @@ export class PassService {
         });
     }
 
-    /**
-     * Process a pass scan by a guard
-     */
-    // async processPassScan(passId, guardId) {
-    //     const now = new Date();
-
-    //     // Get pass with visitor details
-    //     const pass = await prisma.pass.findUnique({
-    //         where: { pass_id: parseInt(passId) },
-    //         include: {
-    //             visitor: {
-    //                 include: {
-    //                     host: true
-    //                 }
-    //             }
-    //         }
-    //     });
-
-    //     if (!pass) {
-    //         throw new Error('Pass not found');
-    //     }
-
-    //     // Validate pass hasn't been processed
-    //     if (pass.approved_at) {
-    //         throw new Error('Pass has already been processed');
-    //     }
-
-    //     // Check if pass is expired
-    //     if (now > pass.expiry_time) {
-    //         throw new Error('Pass has expired');
-    //     }
-
-    //     // Process the pass scan in a transaction
-    //     return await prisma.$transaction(async (prisma) => {
-    //         // Update pass with approval
-    //         const updatedPass = await prisma.pass.update({
-    //             where: { pass_id: parseInt(passId) },
-    //             data: {
-    //                 approved_at: now,
-    //                 approved_by: guardId
-    //             }
-    //         });
-
-    //         // Update visitor status
-    //         await prisma.visitor.update({
-    //             where: { visitor_id: pass.visitor_id },
-    //             data: {
-    //                 status: 'APPROVED',
-    //                 entry_time: now
-    //             }
-    //         });
-
-    //         // Create notification
-    //         await prisma.notification.create({
-    //             data: {
-    //                 recipient_id: pass.visitor.host.user_id,
-    //                 visitor_id: pass.visitor_id,
-    //                 content: `Visitor ${pass.visitor.name} has checked in. Entry time: ${now.toLocaleString()}`
-    //             }
-    //         });
-
-    //         return updatedPass;
-    //     });
-    // }
     
     async getAllPasses(queryParams, userId, userRole) {
         const { visitor_id, date_range } = queryParams;
@@ -153,7 +89,7 @@ export class PassService {
         let where = {};
         
         // If user is a host, only show passes for their visitors
-        if (userRole === 'host') {
+        if (userRole === 'HOST') {
             where.visitor = {
                 host_id: parseInt(userId)
             };
@@ -237,7 +173,7 @@ export class PassService {
         }
 
         // Check permissions - only admin or the visitor's host can view the pass
-        if (userRole !== 'admin' && pass.visitor.host.user_id !== userId) {
+        if (userRole !== 'ADMIN' && pass.visitor.host.user_id !== userId) {
             throw new Error('You do not have permission to view this pass');
         }
 
@@ -255,7 +191,7 @@ export class PassService {
     //             const pass = await prisma.pass.create({
     //                 data: {
     //                     visitor_id: parseInt(visitorId),
-    //                     status: 'pending',
+    //                     status: 'PENDING',
     //                     expiry_time: new Date(expiryTime),
     //                     qr_code_data: passToken, // Store just the token
     //                     created_at: new Date()

@@ -159,7 +159,7 @@ export class AdminService {
         }
 
         // If changing role from host, check for pending items
-        if (role && existingUser.role === 'host' && role !== 'host') {
+        if (role && existingUser.role === 'HOST' && role !== 'HOST') {
             const hasPendingItems = await prisma.visitor.findFirst({
                 where: {
                     host_id: userId,

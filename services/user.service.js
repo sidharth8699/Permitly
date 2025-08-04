@@ -9,7 +9,7 @@ class UserService {
      * Get user profile with related counts
      */
     async getUserProfile(userId) {
-        const user = await prisma.User.findUnique({
+        const user = await prisma.user.findUnique({
             where: { user_id: userId },
             select: {
                 user_id: true,
@@ -40,7 +40,7 @@ class UserService {
      * Update user profile
      */
     async updateUserProfile(userId, updateData) {
-        const user = await prisma.User.findUnique({
+        const user = await prisma.user.findUnique({
             where: { user_id: userId }
         });
 
@@ -98,7 +98,10 @@ class UserService {
         // Add allowed fields to update object
         if (updateData.name) updateFields.name = updateData.name;
         if (updateData.phone_number) updateFields.phone_number = updateData.phone_number;
-        if (updateData.role) updateFields.role = updateData.role;
+        if (updateData.role) {
+            // Ensure role is uppercase to match Prisma enum
+            updateFields.role = updateData.role.toUpperCase();
+        }
         
         // Handle email update
         if (updateData.email && updateData.email !== user.email) {
@@ -120,7 +123,7 @@ class UserService {
         }
 
         // Update user
-        const updatedUser = await prisma.User.update({
+        const updatedUser = await prisma.user.update({
             where: { user_id: userId },
             data: {
                 ...updateFields,
