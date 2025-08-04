@@ -42,6 +42,7 @@ export class VisitorService {
                 email: true,
                 phone_number: true,
                 purpose_of_visit: true,
+                host_id: true,
                 status: true,
                 entry_time: true,
                 exit_time: true,
@@ -99,8 +100,12 @@ export class VisitorService {
             // Create notification via email
             await prisma.notification.create({
                 data: {
-                    recipient_id: visitor.host.user_id,
-                    visitor_id: visitor.visitor_id,
+                    recipient: {
+                        connect: { user_id: visitor.host.user_id }
+                    },
+                    visitor: {
+                        connect: { visitor_id: visitor.visitor_id }
+                    },
                     content: `Visitor ${visitor.name}'s status has been updated to ${status}`
                 }
             });
@@ -214,7 +219,6 @@ export class VisitorService {
                 passes: {
                     select: {
                         pass_id: true,
-                        status: true,
                         created_at: true,
                         expiry_time: true,
                         approved_at: true,

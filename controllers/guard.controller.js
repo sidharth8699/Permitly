@@ -99,11 +99,20 @@ export class GuardController {
      */
     async getDailyStats(req, res) {
         try {
-            const stats = await guardService.getDailyStats(req.user.user_id);
+            const stats = await guardService.getDailyStats();
             
             res.status(200).json({
                 status: 'success',
-                data: stats
+                data: {
+                    stats: {
+                        approvedVisitors: stats.approvedVisitors,
+                        pendingVisitors: stats.pendingVisitors,
+                        expiredVisitors: stats.expiredVisitors,
+                        rejectedVisitors: stats.rejectedVisitors,
+                        totalVisitors: stats.totalVisitors,
+                        date: stats.date
+                    }
+                }
             });
         } catch (error) {
             res.status(500).json({

@@ -10,7 +10,7 @@ router.use(protect);
 /**
  * User Profile Routes
  */
-router.get('/profile', userController.getProfile);
+router.get('/profile', userController.getProfile);   // holds user profile information
 router.put('/profile', userController.updateProfile);
 
 /**

@@ -3,6 +3,39 @@ import { PassService } from '../services/pass.service.js';
 const passService = new PassService();
 
 export class PassController {
+    /**
+     * Create a new pass for a visitor
+     */
+    async createPass(req, res) {
+        try {
+            const pass = await passService.createPass(
+                req.params.visitorId,
+                req.user.user_id
+            );
+            res.status(201).json(pass);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Process a pass scan
+     */
+    // async processPassScan(req, res) {
+    //     try {
+    //         const result = await passService.processPassScan(
+    //             req.params.passId,
+    //             req.user.user_id
+    //         );
+    //         res.json(result);
+    //     } catch (error) {
+    //         res.status(400).json({ error: error.message });
+    //     }
+    // }
+
+    /**
+     * Get all passes with filtering
+     */
     async getAllPasses(req, res) {
         try {
             const passes = await passService.getAllPasses(

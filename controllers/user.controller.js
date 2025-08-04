@@ -82,15 +82,6 @@ export const userController = {
     async getRecentVisitors(req, res) {
         try {
             const userId = req.user.user_id;
-            
-            // Only hosts can see their visitors
-            if (req.user.role !== 'host') {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Only hosts can view their visitors'
-                });
-            }
-
             const recentVisitors = await userService.getRecentVisitors(userId);
 
             res.status(200).json({

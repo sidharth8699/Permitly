@@ -95,16 +95,14 @@ export class GuardService {
                 }
             });
 
-            // Create notification for host
+                // Create notification for host
             await prisma.notification.create({
                 data: {
                     recipient_id: pass.visitor.host.user_id,
                     visitor_id: pass.visitor_id,
                     content: `Visitor ${pass.visitor.name} has been approved by Guard ${guard.name}. Entry time: ${now.toLocaleString()}`
                 }
-            });
-
-            return { pass: updatedPass, visitor: updatedVisitor };
+            });            return { pass: updatedPass, visitor: updatedVisitor };
         });
 
         return result;
@@ -210,49 +208,61 @@ export class GuardService {
     /**
      * Get guard's daily statistics
      */
-    async getDailyStats(guardId) {
+    async getDailyStats() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const [approvedPasses, expiredPasses, pendingVisitors] = await Promise.all([
-            // Count approved passes today
-            prisma.pass.count({
-                where: {
-                    approved_by: guardId,
-                    approved_at: {
-                        gte: today,
-                        lt: tomorrow
-                    }
-                }
-            }),
-            // Count expired passes processed today
-            prisma.pass.count({
-                where: {
-                    approved_by: guardId,
-                    approved_at: {
-                        gte: today,
-                        lt: tomorrow
-                    },
-                    expiry_time: {
-                        lt: new Date()
-                    }
-                }
-            }),
-            // Count pending visitors created by guard
+        const [approvedVisitors, pendingVisitors, expiredVisitors, rejectedVisitors] = await Promise.all([
+            // Count all approved visitors today
             prisma.visitor.count({
                 where: {
-                    created_by_guard_id: guardId,
-                    status: 'PENDING'
+                    status: 'APPROVED',
+                    entry_time: {
+                        gte: today,
+                        lt: tomorrow
+                    }
+                }
+            }),
+            // Count all pending visitors
+            prisma.visitor.count({
+                where: {
+                    status: 'PENDING',
+                    created_at: {
+                        gte: today,
+                        lt: tomorrow
+                    }
+                }
+            }),
+            // Count all expired visitors today
+            prisma.visitor.count({
+                where: {
+                    status: 'EXPIRED',
+                    exit_time: {
+                        gte: today,
+                        lt: tomorrow
+                    }
+                }
+            }),
+            // Count all rejected visitors today
+            prisma.visitor.count({
+                where: {
+                    status: 'REJECTED',
+                    created_at: {
+                        gte: today,
+                        lt: tomorrow
+                    }
                 }
             })
         ]);
 
         return {
-            entriesProcessed: approvedPasses,
-            expiredPasses,
-            pendingApprovals: pendingVisitors,
+            approvedVisitors,
+            pendingVisitors,
+            expiredVisitors,
+            rejectedVisitors,
+            totalVisitors: approvedVisitors + pendingVisitors + expiredVisitors + rejectedVisitors,
             date: today.toISOString().split('T')[0]
         };
     }
@@ -334,16 +344,19 @@ export class GuardService {
                 }
             });
 
-            // Create notification with guard information
-            await prisma.notification.create({
-                data: {
-                    recipient_id: host.user_id,
-                    visitor_id: visitor.visitor_id,
-                    content: `Guard ${visitor.created_by_guard.name} created visitor entry for ${name}. Purpose: ${purpose_of_visit}`
-                }
-            });
-
-            return visitor;
+                // Create notification with guard information
+                await prisma.notification.create({
+                    data: {
+                        recipient: {
+                            connect: { user_id: host.user_id }
+                        },
+                        visitor: {
+                            connect: { visitor_id: visitor.visitor_id }
+                        },
+                        content: `Guard ${visitor.created_by_guard.name} created visitor entry for ${name}. Purpose: ${purpose_of_visit}`
+                    }
+                });
+                return visitor;
         });
     }
 }

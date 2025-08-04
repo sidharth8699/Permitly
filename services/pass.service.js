@@ -1,28 +1,164 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-// import nodemailer from 'nodemailer';
-// import QRCode from 'qrcode';
 
 const prisma = new PrismaClient();
 
 export class PassService {
+    /**
+     * Create a new pass for a visitor
+     */
+    async createPass(visitorId, userId) {
+        // Get visitor details
+        const visitor = await prisma.visitor.findUnique({
+            where: { visitor_id: parseInt(visitorId) },
+            include: {
+                host: true
+            }
+        });
+
+        if (!visitor) {
+            throw new Error('Visitor not found');
+        }
+
+        // Check if visitor already has an active pass
+        const existingPass = await prisma.pass.findFirst({
+            where: {
+                visitor_id: parseInt(visitorId),
+                expiry_time: {
+                    gt: new Date()
+                },
+                approved_at: null
+            }
+        });
+
+        if (existingPass) {
+            throw new Error('Visitor already has an active pass');
+        }
+
+        // Generate QR code data (unique string)
+        const qrCodeData = crypto.randomBytes(32).toString('hex');
+
+        // Set expiry time (24 hours from now)
+        const expiryTime = new Date();
+        expiryTime.setHours(expiryTime.getHours() + 24);
+
+        // Create pass with transaction to ensure all operations succeed
+        return await prisma.$transaction(async (prisma) => {
+            // Create the pass
+            const pass = await prisma.pass.create({
+                data: {
+                    visitor_id: parseInt(visitorId),
+                    qr_code_data: qrCodeData,
+                    expiry_time: expiryTime
+                },
+                include: {
+                    visitor: {
+                        include: {
+                            host: true
+                        }
+                    }
+                }
+            });
+
+            // Create notification for the host
+            await prisma.notification.create({
+                data: {
+                    recipient: {
+                        connect: {
+                            user_id: visitor.host.user_id
+                        }
+                    },
+                    visitor: {
+                        connect: {
+                            visitor_id: visitor.visitor_id
+                        }
+                    },
+                    content: `New pass created for visitor ${visitor.name}. Valid until ${expiryTime.toLocaleString()}`
+                }
+            });
+
+            return pass;
+        });
+    }
+
+    /**
+     * Process a pass scan by a guard
+     */
+    // async processPassScan(passId, guardId) {
+    //     const now = new Date();
+
+    //     // Get pass with visitor details
+    //     const pass = await prisma.pass.findUnique({
+    //         where: { pass_id: parseInt(passId) },
+    //         include: {
+    //             visitor: {
+    //                 include: {
+    //                     host: true
+    //                 }
+    //             }
+    //         }
+    //     });
+
+    //     if (!pass) {
+    //         throw new Error('Pass not found');
+    //     }
+
+    //     // Validate pass hasn't been processed
+    //     if (pass.approved_at) {
+    //         throw new Error('Pass has already been processed');
+    //     }
+
+    //     // Check if pass is expired
+    //     if (now > pass.expiry_time) {
+    //         throw new Error('Pass has expired');
+    //     }
+
+    //     // Process the pass scan in a transaction
+    //     return await prisma.$transaction(async (prisma) => {
+    //         // Update pass with approval
+    //         const updatedPass = await prisma.pass.update({
+    //             where: { pass_id: parseInt(passId) },
+    //             data: {
+    //                 approved_at: now,
+    //                 approved_by: guardId
+    //             }
+    //         });
+
+    //         // Update visitor status
+    //         await prisma.visitor.update({
+    //             where: { visitor_id: pass.visitor_id },
+    //             data: {
+    //                 status: 'APPROVED',
+    //                 entry_time: now
+    //             }
+    //         });
+
+    //         // Create notification
+    //         await prisma.notification.create({
+    //             data: {
+    //                 recipient_id: pass.visitor.host.user_id,
+    //                 visitor_id: pass.visitor_id,
+    //                 content: `Visitor ${pass.visitor.name} has checked in. Entry time: ${now.toLocaleString()}`
+    //             }
+    //         });
+
+    //         return updatedPass;
+    //     });
+    // }
+    
     async getAllPasses(queryParams, userId, userRole) {
-        const { visitor_id, date_range, show_all } = queryParams; // Add this parameter for admins to toggle view show_all
+        const { visitor_id, date_range } = queryParams;
 
         // Build base filter conditions
         let where = {};
         
-        // Handle filtering based on role and query params
-
-        // If admin wants to see their own passes OR if it's a regular host
-        if ((!show_all && userRole === 'admin') || userRole === 'host') {
+        // If user is a host, only show passes for their visitors
+        if (userRole === 'host') {
             where.visitor = {
-                host_id: parseInt(userId) // Filter by current user's visitors
+                host_id: parseInt(userId)
             };
         }
-        // If admin wants to see all passes, where remains empty {}
-
-        // Additional filters (apply to both admin and regular users)
+        // Admin can see all passes by default
         
         // Filter by specific visitor if provided
         if (visitor_id) {

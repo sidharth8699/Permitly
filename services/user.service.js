@@ -144,12 +144,19 @@ class UserService {
      * Get recent visitors for a host
      */
     async getRecentVisitors(hostId, limit = 10) {
-        const recentVisitors = await prisma.Visitor.findMany({
+        const recentVisitors = await prisma.visitor.findMany({
             where: { host_id: hostId },
             orderBy: { created_at: 'desc' },
             take: limit,
             include: {
-                pass: true
+                passes: true, // Changed from pass to passes to match schema
+                host: {
+                    select: {
+                        name: true,
+                        email: true,
+                        phone_number: true
+                    }
+                }
             }
         });
 

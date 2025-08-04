@@ -8,7 +8,7 @@ const visitorController = new VisitorController();
 // Protect all visitor routes except creation
 router.use(protect);
 // Only hosts and admins can manage visitors
-router.use('/:id', restrictTo('admin', 'host'));
+router.use('/:visitorId', restrictTo('admin', 'host'));
 
 // Visitor Routes
 router.post('/', visitorController.createVisitor);
@@ -29,7 +29,7 @@ router.put('/:visitorId/reject', visitorController.rejectVisitor);
 router.put('/:visitorId/expire', visitorController.expireVisitor);
 
 // Get visitors by host ID // no permission check needed
-router.get('/host/:host_id', visitorController.getVisitorsByHostId); // Simple route to get visitors for a specific host
+router.get('/host/:host_id', visitorController.getVisitorsByHostId); // Simple route to get visitors for a specific host(admin only)
 
 
 // deletes visitor and pass

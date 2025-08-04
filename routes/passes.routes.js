@@ -1,15 +1,20 @@
 import express from 'express';
 import { PassController } from '../controllers/pass.controller.js';
 import { validatePassRequest } from '../middleware/pass.middleware.js';
+import { protect } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 const passController = new PassController();
 
+// Protect all pass routes
+router.use(protect);
+
 // Pass Routes
 // Create pass for a specific visitor
-// router.post('/visitor/:visitorId',     // created imeadiately after the visitor ID in the URL....URL -> QR Code Image -> Scan -> URL -> Backend Endpoint
-//     validatePassRequest, 
-//     passController.createPass);
+router.post('/visitor/:visitorId', 
+    validatePassRequest, 
+    passController.createPass);
+
 
 
 // for admin and can also by visitor id

@@ -14,7 +14,6 @@ export class AdminService {
 
         // Get users with counts of related entities
         const users = await prisma.user.findMany({
-            where,
             select: {
                 user_id: true,
                 name: true,
@@ -23,11 +22,10 @@ export class AdminService {
                 phone_number: true,
                 created_at: true,
                 updated_at: true,
-                status: true,
                 _count: {
                     select: {
                         visitors: true,           // Count of visitors hosted
-                        approved_passes: true,    // Count of passes approved by this user
+                        passes: true,             // Count of passes
                         notifications: true       // Count of notifications
                     }
                 }
@@ -40,7 +38,7 @@ export class AdminService {
         });
 
         // Get total count for pagination
-        const total = await prisma.user.count({ where });
+        const total = await prisma.user.count();
 
         return {
             users,
@@ -57,70 +55,72 @@ export class AdminService {
      * Get user by ID with detailed related entities summary
      */
     async getUserById(userId) {
-        const user = await prisma.user.findUnique({
-            where: { user_id: userId },
-            include: {
-                visitors: {
-                    select: {
-                        visitor_id: true,
-                        name: true,
-                        status: true,
-                        created_at: true,
-                        passes: {
-                            select: {
-                                pass_id: true,
-                                status: true
+        try {
+            const user = await prisma.user.findUnique({
+                where: { user_id: userId },
+                select: {
+                    user_id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                    phone_number: true,
+                    created_at: true,
+                    updated_at: true,
+                    visitors: {
+                        select: {
+                            visitor_id: true,
+                            name: true,
+                            status: true,
+                            created_at: true,
+                            passes: {
+                                select: {
+                                    pass_id: true,
+                                    created_at: true,
+                                    approved_at: true,
+                                    expiry_time: true
+                                }
                             }
-                        }
+                        },
+                        orderBy: { created_at: 'desc' },
+                        take: 5
                     },
-                    orderBy: { created_at: 'desc' },
-                    take: 5  // Get only recent 5 visitors
-                },
-                approved_passes: {
-                    select: {
-                        pass_id: true,
-                        status: true,
-                        created_at: true,
-                        visitor: {
-                            select: {
-                                name: true,
-                                host: {
-                                    select: {
-                                        name: true
+                    passes: {
+                        select: {
+                            pass_id: true,
+                            created_at: true,
+                            approved_at: true,
+                            expiry_time: true,
+                            visitor: {
+                                select: {
+                                    name: true,
+                                    host: {
+                                        select: {
+                                            name: true
+                                        }
                                     }
                                 }
                             }
+                        },
+                        orderBy: { created_at: 'desc' },
+                        take: 5
+                    },
+                    _count: {
+                        select: {
+                            visitors: true,
+                            passes: true
                         }
-                    },
-                    orderBy: { created_at: 'desc' },
-                    take: 5  // Get only recent 5 approved passes
-                },
-                notifications: {
-                    select: {
-                        notification_id: true,
-                        type: true,
-                        content: true,
-                        created_at: true,
-                        status: true
-                    },
-                    orderBy: { created_at: 'desc' },
-                    take: 5  // Get only recent 5 notifications
-                },
-                _count: {
-                    select: {
-                        visitors: true,
-                        approved_passes: true,
-                        notifications: true
                     }
                 }
+            });
+
+            if (!user) {
+                throw new AppError('User not found', 404);
             }
-        });
 
-        if (!user) {
-            throw new AppError('User not found', 404);
+            return user;
+        } catch (error) {
+            throw new AppError(error.message, error.statusCode || 500);
         }
-
-        return user;
     }
 
     /**
@@ -188,8 +188,7 @@ export class AdminService {
                     _count: {
                         select: {
                             visitors: true,
-                            approved_passes: true,
-                            notifications: true
+                            passes: true
                         }
                     }
                 }
@@ -218,8 +217,13 @@ export class AdminService {
                 visitors: {
                     where: { status: 'PENDING' }
                 },
-                approved_passes: {
-                    where: { status: 'PENDING' }
+                passes: {
+                    where: {
+                        approved_at: null,
+                        expiry_time: {
+                            gt: new Date()
+                        }
+                    }
                 }
             }
         });
@@ -229,7 +233,7 @@ export class AdminService {
         }
 
         // Check for pending items
-        if (user.visitors.length > 0 || user.approved_passes.length > 0) {
+        if (user.visitors.length > 0 || user.passes.length > 0) {
             throw new AppError('Cannot delete user with pending visitors or passes', 400);
         }
 

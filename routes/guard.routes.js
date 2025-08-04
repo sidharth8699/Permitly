@@ -15,7 +15,7 @@ router.use(restrictTo('guard'));
 // Guard creates a visitor entry with provided host_id
 router.post('/visitors', guardController.createVisitorEntry);
 
-router.get('/visitors/pending', guardController.getPendingVisitors);
+router.get('/visitors/pending', guardController.getPendingVisitors);//only for guards
 
 // Get today's pending visitors
 router.get('/visitors/pending/today', guardController.getTodaysPendingVisitors);
