@@ -8,7 +8,7 @@ const visitorController = new VisitorController();
 // Protect all visitor routes except creation
 router.use(protect);
 // Only hosts and admins can manage visitors
-router.use('/:visitorId', restrictTo('admin', 'host'));
+router.use('/:visitorId', restrictTo('ADMIN', 'HOST','GUARD'));
 
 // Visitor Routes
 router.post('/', visitorController.createVisitor);

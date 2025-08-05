@@ -159,4 +159,28 @@ export class GuardController {
             });
         }
     }
+
+    /**
+     * Get approved visitors by host ID
+     */
+    async getApprovedVisitorsByHostId(req, res) {
+        try {
+            const { hostId } = req.params;
+            const visitors = await guardService.getApprovedVisitorsByHostId(parseInt(hostId));
+            
+            res.status(200).json({
+                status: 'success',
+                results: visitors.length,
+                data: {
+                    visitors
+                }
+            });
+        } catch (error) {
+            const statusCode = error.message.includes('not found') ? 404 : 500;
+            res.status(statusCode).json({
+                status: 'error',
+                message: error.message
+            });
+        }
+    }
 }

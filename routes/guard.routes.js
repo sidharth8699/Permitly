@@ -15,13 +15,16 @@ router.use(restrictTo('guard'));
 // Guard creates a visitor entry with provided host_id
 router.post('/visitors', guardController.createVisitorEntry);
 
-router.get('/visitors/pending', guardController.getPendingVisitors);//only for guards
+router.get('/visitors/pending', guardController.getPendingVisitors);//only for created by guards
 
 // Get today's pending visitors
 router.get('/visitors/pending/today', guardController.getTodaysPendingVisitors);
 
 // Get today's approved visitors
 router.get('/visitors/approved/today', guardController.getApprovedVisitors);// idhar exit button also.
+
+// Get approved visitors by host ID
+router.get('/visitors/approved/host/:hostId', guardController.getApprovedVisitorsByHostId);
 
 /**
  * QR Code Scanning Routes

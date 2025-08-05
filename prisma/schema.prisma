@@ -61,7 +61,8 @@ enum VisitorStatus {
  model Pass {
    pass_id         Int       @id @default(autoincrement())
    visitor_id      Int
-   qr_code_data    String
+   qr_code_data    String    // Stores the verification token
+   qr_code_url     String?   // Stores the public URL to access the QR code image
    created_at      DateTime  @default(now())
    expiry_time     DateTime
    approved_at     DateTime?

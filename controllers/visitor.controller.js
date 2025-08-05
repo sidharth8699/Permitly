@@ -174,16 +174,32 @@ export class VisitorController {
                 phone_number: req.body.phone_number,
                 email: req.body.email,
                 purpose_of_visit: req.body.purpose_of_visit,
-                host_id: req.user.user_id // Get host_id from authenticated user
+                host_id: req.user.user_id, // Get host_id from authenticated user
+                expiry_time: req.body.expiry_time // Add expiry_time for pass creation
             };
 
-            const visitor = await visitorService.createVisitor(visitorData);
+            // Validate expiry_time if provided
+            if (visitorData.expiry_time) {
+                const expiryDate = new Date(visitorData.expiry_time);
+                if (isNaN(expiryDate.getTime())) {
+                    return res.status(400).json({
+                        status: 'error',
+                        message: 'Invalid expiry time format'
+                    });
+                }
+                if (expiryDate <= new Date()) {
+                    return res.status(400).json({
+                        status: 'error',
+                        message: 'Expiry time must be in the future'
+                    });
+                }
+            }
+
+            const result = await visitorService.createVisitor(visitorData);
 
             res.status(201).json({
                 status: 'success',
-                data: {
-                    visitor
-                }
+                data: result // This will include both visitor and pass if created
             });
         } catch (error) {
             res.status(400).json({

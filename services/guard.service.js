@@ -5,6 +5,51 @@ const prisma = new PrismaClient();
 
 export class GuardService {
     /**
+     * Get all approved visitors for a specific host
+     */
+    async getApprovedVisitorsByHostId(hostId) {
+        // First verify that the host exists
+        const host = await prisma.user.findUnique({
+            where: { user_id: hostId }
+        });
+
+        if (!host) {
+            throw new Error('Host not found');
+        }
+
+        // Get all approved visitors for this host
+        const visitors = await prisma.visitor.findMany({
+            where: {
+                host_id: hostId,
+                status: 'APPROVED'
+            },
+            include: {
+                host: {
+                    select: {
+                        name: true,
+                        email: true,
+                        phone_number: true
+                    }
+                },
+                passes: {
+                    select: {
+                        pass_id: true,
+                        qr_code_data: true,
+                        expiry_time: true
+                    },
+                    where: {
+                        approved_at: { not: null }
+                    }
+                }
+            },
+            orderBy: {
+                created_at: 'desc'
+            }
+        });
+
+        return visitors;
+    }
+    /**
      * Process QR code scan and handle pass/visitor approval or expiration
      */
     async processPassScan(passId, guardId) {

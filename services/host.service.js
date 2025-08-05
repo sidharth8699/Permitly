@@ -20,9 +20,8 @@ class UserService {
                 created_at: true,
                 _count: {
                     select: {
-                        // Count of visitors they've hosted (based on our schema relation name)
+                        // Count of visitors they've hosted
                         visitors: true,
-                        // Count of passes they've verified
                         passes: true
                     }
                 }
@@ -34,6 +33,45 @@ class UserService {
         }
 
         return user;
+    }
+
+    /**
+     * Get dashboard statistics for a host
+     */
+    async getDashboardStats(userId) {
+        // Get total visitor count
+        const totalVisitors = await prisma.visitor.count({
+            where: {
+                host_id: userId
+            }
+        });
+
+        // Get counts for each visitor status
+        const visitorCounts = await prisma.visitor.groupBy({
+            by: ['status'],
+            where: {
+                host_id: userId
+            },
+            _count: {
+                _all: true
+            }
+        });
+
+        // Initialize stats object with zeros
+        const stats = {
+            total_visitors: totalVisitors,
+            approved: 0,
+            pending: 0,
+            rejected: 0,
+            expired: 0
+        };
+
+        // Populate status counts
+        visitorCounts.forEach(count => {
+            stats[count.status.toLowerCase()] = count._count._all;
+        });
+
+        return stats;
     }
 
     /**
@@ -146,7 +184,7 @@ class UserService {
     /**
      * Get recent visitors for a host
      */
-    async getRecentVisitors(hostId, limit = 10) {
+    async getRecentVisitors(hostId, limit = 5) {
         const recentVisitors = await prisma.visitor.findMany({
             where: { host_id: hostId },
             orderBy: { created_at: 'desc' },

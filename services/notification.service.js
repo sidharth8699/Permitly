@@ -21,6 +21,14 @@ export class NotificationService {
                             email: true,
                             role: true
                         }
+                    },
+                    visitor: {
+                        select: {
+                            name: true,
+                            email: true,
+                            status: true,
+                            purpose_of_visit: true
+                        }
                     }
                 },
                 orderBy: {

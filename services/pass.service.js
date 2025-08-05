@@ -1,85 +1,60 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import QRCode from 'qrcode';
+import { transporter } from '../config/nodemailer.js';
+import { uploadToS3, deleteFromS3 } from '../config/s3.js';
 
 const prisma = new PrismaClient();
 
 export class PassService {
     /**
-     * Create a new pass for a visitor
+     * Delete a pass and its associated QR code (Admin only)
      */
-    async createPass(visitorId, userId) {
-        // Get visitor details
-        const visitor = await prisma.visitor.findUnique({
-            where: { visitor_id: parseInt(visitorId) },
+    async deletePass(passId, userId, userRole) {
+        // Only admin can delete passes
+        if (userRole !== 'ADMIN') {
+            throw new Error('Only administrators can delete passes');
+        }
+
+        const pass = await prisma.pass.findUnique({
+            where: { pass_id: parseInt(passId) },
             include: {
-                host: true
+                visitor: true
             }
         });
 
-        if (!visitor) {
-            throw new Error('Visitor not found');
+        if (!pass) {
+            throw new Error('Pass not found');
         }
 
-        // Check if visitor already has an active pass
-        const existingPass = await prisma.pass.findFirst({
-            where: {
-                visitor_id: parseInt(visitorId),
-                expiry_time: {
-                    gt: new Date()
-                },
-                approved_at: null
-            }
-        });
+        try {
+            await prisma.$transaction(async (prisma) => {
+                // Delete QR code from S3
+                const fileName = `pass_${pass.pass_id}.png`;
+                await deleteFromS3(fileName);
 
-        if (existingPass) {
-            throw new Error('Visitor already has an active pass');
-        }
+                // Delete the pass from database
+                // await prisma.pass.delete({
+                //     where: { pass_id: parseInt(passId) }
+                // });
 
-        // Generate QR code data (unique string)
-        const qrCodeData = crypto.randomBytes(32).toString('hex');
-
-        // Set expiry time (24 hours from now)
-        const expiryTime = new Date();
-        expiryTime.setHours(expiryTime.getHours() + 24);
-
-        // Create pass with transaction to ensure all operations succeed
-        return await prisma.$transaction(async (prisma) => {
-            // Create the pass
-            const pass = await prisma.pass.create({
-                data: {
-                    visitor_id: parseInt(visitorId),
-                    qr_code_data: qrCodeData,
-                    expiry_time: expiryTime
-                },
-                include: {
-                    visitor: {
-                        include: {
-                            host: true
-                        }
+                // Create notification for the visitor's host
+                await prisma.notification.create({
+                    data: {
+                        recipient_id: pass.visitor.host_id,
+                        visitor_id: pass.visitor_id,
+                        content: `Pass #${pass.pass_id} has been deleted by an administrator.`
                     }
-                }
+                });
             });
 
-            // Create notification for the host
-            await prisma.notification.create({
-                data: {
-                    recipient: {
-                        connect: {
-                            user_id: visitor.host.user_id
-                        }
-                    },
-                    visitor: {
-                        connect: {
-                            visitor_id: visitor.visitor_id
-                        }
-                    },
-                    content: `New pass created for visitor ${visitor.name}. Valid until ${expiryTime.toLocaleString()}`
-                }
-            });
-
-            return pass;
-        });
+            return { message: 'QR code deleted successfully' };
+        } catch (error) {
+            console.error('Error deleting pass:', error);
+            throw new Error(`Failed to delete pass: ${error.message}`);
+        }
     }
+
 
     
     async getAllPasses(queryParams, userId, userRole) {
@@ -181,20 +156,63 @@ export class PassService {
     }
 
     // async createPass(visitorId, expiryTime) {
-    //     // Generate a unique token for the pass
+    //     // Validate visitor ID
+    //     if (!visitorId) {
+    //         throw new Error('Visitor ID is required');
+    //     }
+
+    //     // Get visitor details and validate
+    //     const visitor = await prisma.visitor.findUnique({
+    //         where: { visitor_id: parseInt(visitorId) },
+    //         include: {
+    //             host: true,
+    //             passes: {
+    //                 where: {
+    //                     AND: [
+    //                         {
+    //                             expiry_time: { gt: new Date() }  // Not expired
+    //                         },
+    //                         {
+    //                             OR: [
+    //                                 { approved_at: null },  // Pending approval
+    //                                 { approved_at: { not: null } }  // Already approved
+    //                             ]
+    //                         }
+    //                     ]
+    //                 }
+    //             }
+    //         }
+    //     });
+
+    //     if (!visitor) {
+    //         throw new Error('Visitor not found');
+    //     }
+
+    //     // Check for existing active or pending passes
+    //     if (visitor.passes.length > 0) {
+    //         throw new Error('Visitor already has an active or pending pass');
+    //     }
+
+    //     // Validate expiry time
+    //     const expiryDate = new Date(expiryTime);
+    //     if (isNaN(expiryDate.getTime())) {
+    //         throw new Error('Invalid expiry time format');
+    //     }
+    //     if (expiryDate <= new Date()) {
+    //         throw new Error('Expiry time must be in the future');
+    //     }
+
     //     const passToken = crypto.randomBytes(32).toString('hex');
-        
+
     //     try {
-    //         // Start a transaction
-    //         return await prisma.$transaction(async (prisma) => {
-    //             // Create the pass
+    //         return await prisma.$transaction(
+    //             async (prisma) => {
+    //             // Create the pass first to get the pass_id
     //             const pass = await prisma.pass.create({
     //                 data: {
     //                     visitor_id: parseInt(visitorId),
-    //                     status: 'PENDING',
+    //                     qr_code_data: passToken,      // Store verification token initially
     //                     expiry_time: new Date(expiryTime),
-    //                     qr_code_data: passToken, // Store just the token
-    //                     created_at: new Date()
     //                 },
     //                 include: {
     //                     visitor: {
@@ -205,71 +223,81 @@ export class PassService {
     //                 }
     //             });
 
-    //             // Generate the verification URL that the QR code will contain
-    //             const verificationUrl = `${process.env.BACKEND_URL}/passes/qr/${passToken}`;
+    //             // Generate verification URL with pass_id
+    //             const verificationUrl = `${process.env.BACKEND_URL}/api/guard/scan/${pass.pass_id}`;
                 
-    //             // Create QR code containing the verification URL
+    //             // Generate QR code with the verification URL
     //             const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
-    //                 errorCorrectionLevel: 'H', // High error correction for better scanning
+    //                 errorCorrectionLevel: 'H',
     //                 margin: 2,
-    //                 width: 400, // Larger size for better visibility
+    //                 width: 400,
     //                 color: {
-    //                     dark: '#000000',  // QR code color
-    //                     light: '#ffffff'  // Background color
+    //                     dark: '#000000',
+    //                     light: '#ffffff'
     //                 }
     //             });
 
-    //             // Set up email transporter
-    //             const transporter = nodemailer.createTransport({
-    //                 host: process.env.SMTP_HOST,
-    //                 port: process.env.SMTP_PORT,//////////////////////////////////////////////////
-    //                 secure: true,
-    //                 auth: {
-    //                     user: process.env.SMTP_USER,
-    //                     pass: process.env.SMTP_PASSWORD
+    //             // Save QR code image with pass_id in filename
+    //             const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(';base64,').pop(), 'base64');
+                
+    //             // Upload QR code to S3
+    //             const fileName = `pass_${pass.pass_id}.png`;
+    //             const qrCodeImageUrl = await uploadToS3(qrCodeBuffer, fileName);
+
+    //             // Update pass with the final QR code URL
+    //             const updatedPass = await prisma.pass.update({
+    //                 where: { pass_id: pass.pass_id },
+    //                 data: {
+    //                     qr_code_data: verificationUrl,  // Store complete verification URL
+    //                     qr_code_url: qrCodeImageUrl,    // Store public URL for QR image
+    //                 },
+    //                 include: {
+    //                     visitor: {
+    //                         include: {
+    //                             host: true
+    //                         }
+    //                     }
     //                 }
     //             });
 
-    //             // Create email content with QR code
+    //             // Send email with QR code
     //             const mailOptions = {
-    //                 from: process.env.SMTP_FROM,//////////////////////////////////////////////
-    //                 to: pass.visitor.email,
+    //                 from: process.env.EMAIL_USER,
+    //                 to: updatedPass.visitor.email,
     //                 subject: 'Your Visitor Pass',
     //                 html: `
-    //                     <h2>Welcome ${pass.visitor.name}!</h2>
+    //                     <h2>Welcome ${updatedPass.visitor.name}!</h2>
     //                     <p>Here is your visitor pass QR code for your visit.</p>
-    //                     <p>Host: ${pass.visitor.host.name}</p>
+    //                     <p>Pass ID: ${updatedPass.pass_id}</p>
+    //                     <p>Host: ${updatedPass.visitor.host.name}</p>
     //                     <p>Expiry Time: ${new Date(expiryTime).toLocaleString()}</p>
     //                     <p>Please note: This QR code will automatically expire after the specified expiry time.</p>
-    //                     <img src="${qrCodeDataUrl}" alt="QR Code" style="width: 200px; height: 200px;"/>
     //                     <p>Please ensure to arrive before the expiry time.</p>
     //                 `,
     //                 attachments: [{
     //                     filename: 'qr-code.png',
-    //                     content: qrCodeDataUrl.split(';base64,').pop(),
+    //                     content: qrCodeBuffer,
     //                     encoding: 'base64'
     //                 }]
     //             };
 
-    //             // Send email
     //             await transporter.sendMail(mailOptions);
 
-    //             // Create notification for the host
+    //             // Create notification for host
     //             await prisma.notification.create({
     //                 data: {
-    //                     recipient_id: pass.visitor.host_id,
-    //                     type: 'email',
-    //                     content: `Pass created for visitor ${pass.visitor.name}. Shareable link: ${shareableLink}`,
-    //                     status: 'sent'
+    //                     recipient_id: updatedPass.visitor.host_id,
+    //                     visitor_id: updatedPass.visitor_id,
+    //                     content: `Pass #${updatedPass.pass_id} created for visitor ${updatedPass.visitor.name}. View QR code here: ${qrCodeImageUrl}`
     //                 }
     //             });
 
-    //             // Return pass with shareable link
-    //             return {
-    //                 ...pass,
-    //                 shareableLink
-    //             };
-    //         });
+    //             return updatedPass;
+    //         },
+    //         {
+    //             timeout: 10000 // Increase timeout to 10 seconds to accommodate S3 upload
+    //         }
+    //     );
     //     } catch (error) {
     //         throw new Error(`Failed to create pass: ${error.message}`);
     //     }

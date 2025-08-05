@@ -4,19 +4,79 @@ const passService = new PassService();
 
 export class PassController {
     /**
-     * Create a new pass for a visitor
+     * Delete a pass and its associated QR code (Admin only)
      */
-    async createPass(req, res) {
+    async deletePass(req, res) {
         try {
-            const pass = await passService.createPass(
-                req.params.visitorId,
-                req.user.user_id
-            );
-            res.status(201).json(pass);
+            const { passId } = req.params;
+            const result = await passService.deletePass(passId, req.user.user_id, req.user.role);
+            
+            res.status(200).json({
+                status: 'success',
+                ...result
+            });
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            console.error('Error deleting pass:', error);
+            const statusCode = error.message.includes('Only administrators') ? 403 
+                : error.message.includes('not found') ? 404 
+                : 500;
+            
+            res.status(statusCode).json({
+                status: 'error',
+                message: error.message
+            });
         }
     }
+    /**
+     * Create a new pass for a visitor
+     */
+    // async createPass(req, res) {
+    //     try {
+    //         const { expiryTime } = req.body;
+    //         const { visitorId } = req.params;
+
+    //         // Validate required fields
+    //         if (!expiryTime) {
+    //             return res.status(400).json({
+    //                 status: 'error',
+    //                 message: 'Expiry time is required'
+    //             });
+    //         }
+
+    //         if (!visitorId) {
+    //             return res.status(400).json({
+    //                 status: 'error',
+    //                 message: 'Visitor ID is required'
+    //             });
+    //         }
+
+    //         const pass = await passService.createPass(
+    //             visitorId,
+    //             expiryTime
+    //         );
+
+    //         res.status(201).json({
+    //             status: 'success',
+    //             data: {
+    //                 pass,
+    //                 message: 'Pass created successfully'
+    //             }
+    //         });
+    //     } catch (error) {
+    //         console.error('Error creating pass:', error);
+            
+    //         const statusCode = 
+    //             error.message.includes('not found') ? 404 :
+    //             error.message.includes('already has') ? 409 :
+    //             error.message.includes('Invalid') || error.message.includes('must be') ? 400 :
+    //             500;
+
+    //         res.status(statusCode).json({
+    //             status: 'error',
+    //             message: error.message
+    //         });
+    //     }
+    // }
 
     /**
      * Process a pass scan
@@ -78,33 +138,4 @@ export class PassController {
         }
     }
 
-    // async createPass(req, res) {
-    //     try {
-    //         const { expiry_time } = req.body;
-    //         const visitor_id = req.params.visitorId; // Get visitor ID from URL params
-
-    //         // Validate expiry time is provided
-    //         if (!expiry_time) {
-    //             return res.status(400).json({ 
-    //                 error: 'Expiry time is required.' 
-    //             });
-    //         }
-
-    //         // Validate expiry time is in the future
-    //         if (new Date(expiry_time) <= new Date()) {
-    //             return res.status(400).json({ 
-    //                 error: 'Expiry time must be in the future' 
-    //             });
-    //         }
-
-    //         const pass = await passService.createPass(visitor_id, expiry_time);
-    //         res.status(201).json(pass);
-    //     } catch (error) {
-    //         console.error('Error creating pass:', error);
-    //         res.status(500).json({ 
-    //             error: 'Failed to create pass',
-    //             details: error.message 
-    //         });
-    //     }
-    // }
 }

@@ -20,7 +20,7 @@ export const protect = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         // 3) Check if user still exists
-        const currentUser = await prisma.User.findUnique({
+        const currentUser = await prisma.user.findUnique({
             where: { user_id: decoded.userId }
         });
 
@@ -41,7 +41,11 @@ export const protect = async (req, res, next) => {
  */
 export const restrictTo = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        // Convert both the user's role and allowed roles to uppercase for comparison
+        const userRole = req.user.role.toUpperCase();
+        const upperRoles = roles.map(role => role.toUpperCase());
+        
+        if (!upperRoles.includes(userRole)) {
             return next(new AppError('You do not have permission to perform this action', 403));
         }
         next();

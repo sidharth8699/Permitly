@@ -127,7 +127,7 @@ export class AdminService {
      * Update user details with validation
      */
     async updateUser(userId, updateData) {
-        const { email, role, status, ...otherData } = updateData;
+        const { email, role, ...otherData } = updateData;
 
         // Check if user exists
         const existingUser = await prisma.user.findUnique({
@@ -181,7 +181,6 @@ export class AdminService {
                     ...otherData,
                     ...(email && { email }),
                     ...(role && { role }),
-                    ...(status && { status }),
                     updated_at: new Date()
                 },
                 include: {
@@ -198,7 +197,7 @@ export class AdminService {
             await prisma.notification.create({
                 data: {
                     recipient_id: userId,
-                    content: `Your account details have been updated${role ? `. New role: ${role}` : ''}${status ? `. New status: ${status}` : ''}`
+                    content: `Your account details have been updated${role ? `. New role: ${role}` : ''}`
                 }
             });
 

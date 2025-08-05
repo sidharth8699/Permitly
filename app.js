@@ -1,6 +1,6 @@
 import express from 'express';
 import { PORT } from './config/env.js';
-import userRoutes from './routes/users.routes.js';
+import userRoutes from './routes/host.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import visitorRoutes from './routes/visitors.routes.js';
@@ -18,6 +18,9 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use('/qr-codes', express.static('public/qr-codes'));
 
 // Health check
 app.get('/health', (_req, res) => {

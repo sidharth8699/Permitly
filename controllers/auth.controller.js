@@ -42,7 +42,7 @@ export const authController = {
             if (!validateRole(userData.role)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid role. Role must be either admin, host, or guard'
+                    message: 'Invalid role. Role must be either ADMIN, HOST, or GUARD'
                 });
             }
 

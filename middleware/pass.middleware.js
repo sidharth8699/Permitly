@@ -1,25 +1,36 @@
 export const validatePassRequest = (req, res, next) => {
-    const { expiry_time } = req.body;
     const { visitorId } = req.params;
+    const { expiryTime } = req.body;
 
     // Check if visitor ID is valid
     if (!visitorId || isNaN(parseInt(visitorId))) {
         return res.status(400).json({
-            error: 'Invalid visitor ID'
+            status: 'error',
+            message: 'Invalid visitor ID. Must be a number.'
         });
     }
 
-    // Check expiry time is provided
-    if (!expiry_time) {
+    // Check if expiry time is provided and valid
+    if (!expiryTime) {
         return res.status(400).json({
-            error: 'Expiry time is required'
+            status: 'error',
+            message: 'Expiry time is required'
         });
     }
 
-    // Validate expiry time is in the future
-    if (new Date(expiry_time) <= new Date()) {
+    // Validate expiry time format and ensure it's in the future
+    const expiryDate = new Date(expiryTime);
+    if (isNaN(expiryDate.getTime())) {
         return res.status(400).json({
-            error: 'Expiry time must be in the future'
+            status: 'error',
+            message: 'Invalid expiry time format. Must be a valid date string.'
+        });
+    }
+
+    if (expiryDate <= new Date()) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Expiry time must be in the future'
         });
     }
 

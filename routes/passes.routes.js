@@ -10,15 +10,16 @@ const passController = new PassController();
 router.use(protect);
 
 // Pass Routes
-// Create pass for a specific visitor
-router.post('/visitor/:visitorId', 
-    validatePassRequest, 
-    passController.createPass);
-
-
-
-// for admin and can also by visitor id
+// Get all passes with filters
 router.get('/', passController.getAllPasses); // Get all passes with filters has to toggle for admin to see all passes or only their own
+
+// Create pass for a specific visitor
+// router.post('/visitor/:visitorId', 
+//     validatePassRequest, 
+//     passController.createPass);
+
+// Delete pass (Admin only)
+router.delete('/:passId', passController.deletePass);
 
 // Get details of a specific pass (admin can view any, host can only view their visitors' passes)
 router.get('/:passId', passController.getPassById);        // for admin only.

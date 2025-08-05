@@ -1,7 +1,27 @@
-import userService from '../services/user.service.js';
+import userService from '../services/host.service.js';
 import { validateEmail, validatePassword, validatePhoneNumber } from '../utils/validators.js';
 
 export const userController = {
+    /**
+     * Get dashboard statistics for a host
+     */
+    async getDashboardStats(req, res) {
+        try {
+            const userId = req.user.user_id;
+            const stats = await userService.getDashboardStats(userId);
+
+            res.status(200).json({
+                success: true,
+                data: stats
+            });
+        } catch (error) {
+            console.error('Error getting dashboard stats:', error);
+            res.status(error.statusCode || 500).json({
+                success: false,
+                message: error.message || 'Internal server error'
+            });
+        }
+    },
     /**
      * Get user profile with related counts
      */

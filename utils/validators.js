@@ -9,8 +9,8 @@
  * @returns {boolean} - True if role is valid
  */
 export const validateRole = (role) => {
-    const validRoles = ['admin', 'host', 'guard'];
-    return validRoles.includes(role);
+    const validRoles = ['ADMIN', 'HOST', 'GUARD'];
+    return validRoles.includes(role?.toUpperCase());
 };
 
 /**

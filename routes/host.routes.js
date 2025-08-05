@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware.js';
-import { userController } from '../controllers/user.controller.js';
+import { userController } from '../controllers/host.controller.js';
 
 const router = express.Router();
 
@@ -17,5 +17,10 @@ router.put('/profile', userController.updateProfile);
  * Recent Visitors Route (Host Only)
  */
 router.get('/recent-visitors', userController.getRecentVisitors);  // for user interface, showing always latest 10 visitors can create refresh button in frontend
+
+/**
+ * Dashboard Statistics
+ */
+router.get('/dashboard/stats', userController.getDashboardStats);  // Get visitor statistics for the host
 
 export default router;
