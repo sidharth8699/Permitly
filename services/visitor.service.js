@@ -280,12 +280,18 @@ export class VisitorService {
     async createVisitor(visitorData) {
         const { name, phone_number, email, purpose_of_visit, host_id, expiry_time } = visitorData;
         
-        // Validate expiry time if provided
-       
+        // Validate required fields (including expiry_time)
+        if (!name || !phone_number || !email || !purpose_of_visit || !host_id || !expiry_time) {
+            throw new Error('Missing required fields. All fields including expiry_time are required.');
+        }
 
-        // Validate required fields
-        if (!name || !phone_number || !email || !purpose_of_visit || !host_id) {
-            throw new Error('Missing required fields');
+        // Validate expiry time format and ensure it's in the future
+        const expiryDate = new Date(expiry_time);
+        if (isNaN(expiryDate.getTime())) {
+            throw new Error('Invalid expiry time format');
+        }
+        if (expiryDate <= new Date()) {
+            throw new Error('Expiry time must be in the future');
         }
 
         // Validate email and phone number format
@@ -343,9 +349,9 @@ export class VisitorService {
             throw new Error('Host not found');
         }
         // Check that only hosts, guards and admins can create visitor entries
-        if (host.role !== 'HOST' && host.role !== 'ADMIN' && host.role !== 'GUARD') {
-            throw new Error('Only hosts, guards and admins can create visitor entries');
-        }
+        // if (host.role !== 'HOST' && host.role !== 'ADMIN' && host.role !== 'GUARD') {
+        //     throw new Error('Only hosts, guards and admins can create visitor entries');
+        // }
 
         // Use transaction to ensure both visitor and notification are created
         return await prisma.$transaction(async (prisma) => {
@@ -372,79 +378,73 @@ export class VisitorService {
 
             console.log('Visitor created:', visitor);
 
-            let pass = null;
-            // Create pass if expiry time is provided
-            if (expiry_time) {
-                const passToken = crypto.randomBytes(32).toString('hex');
-                pass = await prisma.pass.create({
-                    data: {
-                        visitor_id: visitor.visitor_id,
-                        qr_code_data: passToken,
-                        expiry_time: new Date(expiry_time),
-                    }
-                });
+            // Create pass (now always required since expiry_time is compulsory)
+            const passToken = crypto.randomBytes(32).toString('hex');
+            const pass = await prisma.pass.create({
+                data: {
+                    visitor_id: visitor.visitor_id,
+                    qr_code_data: passToken,
+                    expiry_time: new Date(expiry_time),
+                }
+            });
 
-                // Generate QR code and upload to S3
-                const verificationUrl = new URL(`/api/guard/scan/${pass.pass_id}`, process.env.BACKEND_URL).toString();
-                const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
-                    errorCorrectionLevel: 'H',
-                    margin: 4,
-                    width: 512,
-                    quality: 1
-                });
+            // Generate QR code and upload to S3
+            const verificationUrl = new URL(`/api/guard/scan/${pass.pass_id}`, process.env.BACKEND_URL).toString();
+            const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+                errorCorrectionLevel: 'H',
+                margin: 4,
+                width: 512,
+                quality: 1
+            });
 
-                const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(';base64,').pop(), 'base64');
-                const fileName = `pass_${pass.pass_id}.png`;
-                const qrCodeImageUrl = await uploadToS3(qrCodeBuffer, fileName);
+            const qrCodeBuffer = Buffer.from(qrCodeDataUrl.split(';base64,').pop(), 'base64');
+            const fileName = `pass_${pass.pass_id}.png`;
+            const qrCodeImageUrl = await uploadToS3(qrCodeBuffer, fileName);
 
-                // Update pass with QR code URL
-                pass = await prisma.pass.update({
-                    where: { pass_id: pass.pass_id },
-                    data: {
-                        qr_code_data: verificationUrl,
-                        qr_code_url: qrCodeImageUrl,
-                    }
-                });
+            // Update pass with QR code URL
+            const updatedPass = await prisma.pass.update({
+                where: { pass_id: pass.pass_id },
+                data: {
+                    qr_code_data: verificationUrl,
+                    qr_code_url: qrCodeImageUrl,
+                }
+            });
 
-                console.log('Pass created:', pass);
+            console.log('Pass created:', updatedPass);
 
-                // Send email with QR code
-                const mailOptions = {
-                    from: process.env.EMAIL_USER,
-                    to: visitor.email,
-                    subject: 'Your Visitor Pass',
-                    html: `
-                        <h2>Welcome ${visitor.name}!</h2>
-                        <p>Here is your visitor pass QR code for your visit.</p>
-                        <p>Pass ID: ${pass.pass_id}</p>
-                        <p>Host: ${visitor.host.name}</p>
-                        <p>Purpose: ${visitor.purpose_of_visit}</p>
-                        <p>Expiry Time: ${new Date(expiry_time).toLocaleString()}</p>
-                        <p><strong>How to use this QR code:</strong></p>
-                        <ol>
-                            <li>Show this QR code to the security guard at the entrance</li>
-                            <li>The guard will scan it using their device</li>
-                            <li>You can either show the QR code from your phone or bring a printed copy</li>
-                        </ol>
-                        <p>Direct link: <a href="${verificationUrl}">${verificationUrl}</a></p>
-                        <p>Please note: This QR code will automatically expire after the specified expiry time.</p>
-                        <p>Please ensure to arrive before the expiry time.</p>
-                    `,
-                    attachments: [{
-                        filename: 'qr-code.png',
-                        content: qrCodeBuffer,
-                        encoding: 'base64'
-                    }]
-                };
+            // Send email with QR code
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: visitor.email,
+                subject: 'Your Visitor Pass',
+                html: `
+                    <h2>Welcome ${visitor.name}!</h2>
+                    <p>Here is your visitor pass QR code for your visit.</p>
+                    <p>Pass ID: ${pass.pass_id}</p>
+                    <p>Host: ${visitor.host.name}</p>
+                    <p>Purpose: ${visitor.purpose_of_visit}</p>
+                    <p>Expiry Time: ${new Date(expiry_time).toLocaleString()}</p>
+                    <p><strong>How to use this QR code:</strong></p>
+                    <ol>
+                        <li>Show this QR code to the security guard at the entrance</li>
+                        <li>The guard will scan it using their device</li>
+                        <li>You can either show the QR code from your phone or bring a printed copy</li>
+                    </ol>
+                    <p>Please note: This QR code will automatically expire after the specified expiry time.</p>
+                    <p>Please ensure to arrive before the expiry time.</p>
+                `,
+                attachments: [{
+                    filename: 'qr-code.png',
+                    content: qrCodeBuffer,
+                    encoding: 'base64'
+                }]
+            };
 
-                await transporter.sendMail(mailOptions);
-                console.log('Email sent with QR code');
-            }
+            await transporter.sendMail(mailOptions);
+            console.log('Email sent with QR code');
 
             // Create notification for host
-            const notificationContent = pass 
-                ? `New visitor request from ${name} for purpose: ${purpose_of_visit}. Pass created with QR code.`
-                : `New visitor request from ${name} for purpose: ${purpose_of_visit}`;
+            const notificationContent = `New visitor request from ${name} for purpose: ${purpose_of_visit}. Pass created with QR code.`;
 
             const notification = await prisma.notification.create({
                 data: {
@@ -458,8 +458,8 @@ export class VisitorService {
 
             return {
                 visitor,
-                pass,
-                message: pass ? 'Visitor and pass created successfully' : 'Visitor created successfully'
+                pass: updatedPass,
+                message: 'Visitor and pass created successfully'
             };
         });
 
